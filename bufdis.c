@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -11,76 +12,80 @@
 #include <unistd.h>
 
 #define BUFFER_SIZE 65536
-#define FIFO_MAX_NAME_LEN 32
 
 bool is_foreground() {
     return getpgrp() == tcgetpgrp(STDOUT_FILENO);
 }
 
-void store_buffer(const char * buffer, size_t size, size_t start) {
-    assert(start < size);
-    assert(start < size);
+const char * temp_directory_path() {
+    /* ISO/IEC 9945 (POSIX) spec */
+    const char * path;
 
-    char * path = mktemp("bufdis.XXXXXX"); /* TODO: check error */
-    int err = mkfifo(path, 0600);
+    if ((path = getenv("TMPDIR"))) return path;
+    if ((path = getenv("TMP"))) return path;
+    if ((path = getenv("TEMP"))) return path;
+    if ((path = getenv("TEMPDIR"))) return path;
+
+    return "/tmp";
+}
+
+struct fifo_s {
+    int r;
+    int w;
+};
+
+struct fifo_s create_fifo() {
+    const pid_t pid = getpid();
+    char path[1024];
+
+    const int written = snprintf(
+        path, 1024, "%s/bufdis-%jd", temp_directory_path(), (uintmax_t)pid
+    );
+    if (written >= 1024) {
+        fprintf(stderr, "Path to create FIFO too long\n");
+        exit(1);
+    }
+
+    const int err = mkfifo(path, 0600);
 
     if (err == -1) {
         perror("Cannot create FIFO");
         exit(1);
     }
+    assert(err == 0);
 
-    int fd = open(path, O_WRONLY);
+    struct fifo_s result;
 
-    if (fd == -1) {
-        perror("Cannot open FIFO");
-        exit(1);
-    }
-    free(path);
+    /* TODO: make multithread */
+    result.r = open(path, O_RDONLY | O_NONBLOCK);
+    result.w = open(path, O_WRONLY);
 
-    ssize_t written = write(fd, &buffer[start], size - start);
+    if (result.r == -1) { perror("Cannot open FIFO in read mode"); exit(1); }
+    if (result.w == -1) { perror("Cannot open FIFO in write mode"); exit(1); }
 
-    if (written == -1) {
-        perror("Cannot write to FIFO");
-        exit(1);
-    }
-    assert(written + start == size);
-
-    written = write(fd, buffer, start);
-
-    if (written == -1) {
-        perror("Cannot write to FIFO");
-        exit(1);
-    }
-    assert(written == (ssize_t)start);
-
-    err = close(fd);
-
-    if (err == -1) {
-        perror("Cannot close FIFO");
-        exit(1);
-    }
+    return result;
 }
 
 
 int main(void) {
-    char buffer[BUFFER_SIZE];
+    const struct fifo_s fifo = create_fifo();
     char ch;
 
-    size_t start = 0;
-    size_t end = 0;
-
+    /* TODO: handle error on read */
     while (read(STDIN_FILENO, &ch, 1)) {
-        buffer[end] = ch;
-        end = (end + 1) % BUFFER_SIZE;
+        /* TODO: handle error on write */
+        write(fifo.w, &ch, 1);
 
-        if (end == start) /* buffer full */
-            exit(1); /* TODO: handle correctly */
-
-        while (is_foreground() && start != end) {
-            write(STDOUT_FILENO, &buffer[start], 1);
-            start = (start + 1) % BUFFER_SIZE;
+        if (is_foreground()) {
+            char rch;
+            int written;
+            while (written = read(fifo.r, &rch, 1), written > 0)
+                write(STDOUT_FILENO, &rch, 1);
         }
     }
+
+    /* TODO: cleanup */
+    /* TODO: cleanup on interrupt */
 
     return EXIT_SUCCESS;
 }
