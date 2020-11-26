@@ -36,7 +36,7 @@ char * fifo_path() {
     );
     if (written >= 1024) {
         fprintf(stderr, "Path to create FIFO too long\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     return strdup(path);
@@ -52,7 +52,7 @@ struct fifo_s create_fifo(const char * path) {
 
     if (err == -1) {
         perror("Cannot create FIFO");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     assert(err == 0);
 
@@ -62,8 +62,8 @@ struct fifo_s create_fifo(const char * path) {
     result.r = open(path, O_RDONLY | O_NONBLOCK);
     result.w = open(path, O_WRONLY);
 
-    if (result.r == -1) { perror("Cannot open FIFO in read mode"); exit(1); }
-    if (result.w == -1) { perror("Cannot open FIFO in write mode"); exit(1); }
+    if (result.r == -1) { perror("Cannot open FIFO in read mode"); exit(EXIT_FAILURE); }
+    if (result.w == -1) { perror("Cannot open FIFO in write mode"); exit(EXIT_FAILURE); }
 
     return result;
 }
@@ -91,7 +91,7 @@ int main(void) {
     const int err = remove(path);
     if (err == -1) {
         perror("Cannot remove FIFO");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     free(path);
