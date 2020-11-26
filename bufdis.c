@@ -9,8 +9,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#define BUFFER_SIZE 65536
-
 bool is_foreground() {
     return getpgrp() == tcgetpgrp(STDOUT_FILENO);
 }
