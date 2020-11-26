@@ -1,6 +1,6 @@
-CFLAGS = -Wall -Werror -Wextra -pedantic
+CFLAGS ?= -Wall -Werror -Wextra -pedantic
 
-sources = bufdis.c
+sources := bufdis.c
 
 bufdis: $(sources)
 
