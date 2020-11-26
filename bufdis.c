@@ -17,10 +17,11 @@ bool is_foreground() {
     return getpgrp() == tcgetpgrp(STDOUT_FILENO);
 }
 
-void store_buffer(const char * buffer, size_t size, ptrdiff_t start) {
+void store_buffer(const char * buffer, size_t size, size_t start) {
+    assert(start < size);
     assert(start < size);
 
-    char * path = mkstemp("bufdis.XXXXXX"); /* TODO: check error */
+    char * path = mktemp("bufdis.XXXXXX"); /* TODO: check error */
     int err = mkfifo(path, 0600);
 
     if (err == -1) {
@@ -42,7 +43,7 @@ void store_buffer(const char * buffer, size_t size, ptrdiff_t start) {
         perror("Cannot write to FIFO");
         exit(1);
     }
-    assert(written == size - start);
+    assert(written + start == size);
 
     written = write(fd, buffer, start);
 
@@ -50,7 +51,7 @@ void store_buffer(const char * buffer, size_t size, ptrdiff_t start) {
         perror("Cannot write to FIFO");
         exit(1);
     }
-    assert(written == start);
+    assert(written == (ssize_t)start);
 
     err = close(fd);
 
@@ -65,8 +66,8 @@ int main(void) {
     char buffer[BUFFER_SIZE];
     char ch;
 
-    ptrdiff_t start = 0;
-    ptrdiff_t end = 0;
+    size_t start = 0;
+    size_t end = 0;
 
     while (read(STDIN_FILENO, &ch, 1)) {
         buffer[end] = ch;
