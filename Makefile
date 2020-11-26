@@ -1,6 +1,11 @@
-CFLAGS=-Wall -Werror -Wextra -pedantic
+CFLAGS = -Wall -Werror -Wextra -pedantic
 
-bufdis: bufdis.c
+sources = bufdis.c
+
+bufdis: $(sources)
+
+check:
+	! include-what-you-use $(sources) | awk 'NF' | grep -v 'has correct #includes'
 
 .PHONY: clean
 clean:
