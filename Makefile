@@ -12,10 +12,10 @@ clean:
 	$(RM) bufdis
 
 install: bufdis
-	install -d $(DESTDIR)$(PREFIX)/bin
-	install -m +x bufdis $(DESTDIR)$(PREFIX)/bin
+	install -d $(DESTDIR)$(prefix)/bin
+	install -m +x bufdis $(DESTDIR)$(prefix)/bin
 
 uninstall:
-	rm -f $(DESTDIR)$(PREFIX)/bin/bufdis
+	rm -f $(DESTDIR)$(prefix)/bin/bufdis
 
 .PHONY: all check clean install uninstall
