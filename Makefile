@@ -4,6 +4,7 @@ sources := bufdis.c
 
 bufdis: $(sources)
 
+.PHONY: check
 check:
 	! include-what-you-use $(sources) | awk 'NF' | grep -v 'has correct #includes'
 
