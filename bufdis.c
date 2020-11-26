@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -29,12 +30,7 @@ const char * temp_directory_path() {
     return "/tmp";
 }
 
-struct fifo_s {
-    int r;
-    int w;
-};
-
-struct fifo_s create_fifo() {
+char * fifo_path() {
     const pid_t pid = getpid();
     char path[1024];
 
@@ -46,6 +42,15 @@ struct fifo_s create_fifo() {
         exit(1);
     }
 
+    return strdup(path);
+}
+
+struct fifo_s {
+    int r;
+    int w;
+};
+
+struct fifo_s create_fifo(const char * path) {
     const int err = mkfifo(path, 0600);
 
     if (err == -1) {
@@ -68,7 +73,8 @@ struct fifo_s create_fifo() {
 
 
 int main(void) {
-    const struct fifo_s fifo = create_fifo();
+    char * path = fifo_path();
+    const struct fifo_s fifo = create_fifo(path);
     char ch;
 
     /* TODO: handle error on read */
@@ -84,8 +90,14 @@ int main(void) {
         }
     }
 
-    /* TODO: cleanup */
     /* TODO: cleanup on interrupt */
+    const int err = remove(path);
+    if (err == -1) {
+        perror("Cannot remove FIFO");
+        exit(1);
+    }
+
+    free(path);
 
     return EXIT_SUCCESS;
 }
